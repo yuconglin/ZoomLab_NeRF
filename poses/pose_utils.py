@@ -1,7 +1,8 @@
 import numpy as np
 import os
-from poses.colmap_wrapper import run_colmap
-import poses.colmap_read_model as read_model
+from colmap_wrapper import run_colmap
+import colmap_read_model as read_model
+import argparse
 
 
 '''
@@ -153,7 +154,21 @@ def gen_poses(basedir, match_type):
     # 将数据转换成NeRF格式并保存
     save_poses(basedir, poses, pts3d, perm)
     return True
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument(
+        "--dataset-path",
+        type=str,
+        help="Full path to the dataset.",
+        required=True,
+    )
+    return parser.parse_args()
+
     
 if __name__ == '__main__':
     # 传入的路径下需要有images文件夹，图片放在此文件夹内
-    gen_poses(r'D:\code\Nerf\nerf_test', match_type='exhaustive_matcher')
+    args = parse_args()
+    gen_poses(basedir=args.dataset_path, match_type='exhaustive_matcher')
