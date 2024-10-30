@@ -85,8 +85,12 @@ def poses_avg(poses):
     :return: 新的相机矩阵[3, 5]
     '''
     # 将H,W,f值先取出来，方便后续拼接为新的相机矩阵
+    # r11 r12 r12 t1 H
+    # r21 r22 r23 t2 W
+    # r31 r32 r33 t3 f
     hwf = poses[0, :3, -1:]
     # 求所有相机中心点的平均
+    # The translation column.
     center = poses[:, :3, 3].mean(0)
     # 求所有相机z轴向量的平均
     vec2 = normalize_matrix(poses[:, :3, 2].sum(0))
@@ -148,10 +152,12 @@ def recenter_poses(poses):
     # r21  r22   r23   t2
     # r31  r32   r33   t3
     #  0    0     0    1
+    # Make a homogeneous form of SE3.
     c2w = np.concatenate([c2w[:3,:4], bottom], -2)
     # reshape: [[[0,0,0,1.]]], 按[N,1,1]进行tile运算得到[N, 1, 4]
     bottom = np.tile(np.reshape(bottom, [1, 1, 4]), [poses.shape[0], 1, 1])
     # [N, 4, 4]
+    # Make all the poses into homogeneous form of SE3.
     poses = np.concatenate([poses[:, :3, :4], bottom], -2)
     # c2w的逆(shape为[4, 4])左乘poses(shape为[N,4,4])，这相当于对每一个相机位姿都做一个旋转平移变换
     # 使得变换后的平均相机位姿位置处在世界坐标系原点，XYZ轴与世界坐标系保持一致
@@ -165,6 +171,7 @@ def recenter_poses(poses):
 '''
 该方法用于找到与所有相机发出的射线距离之和最短的点，用于找到场景中心
 需要注意这里的rays_d都是单位向量，具体原理可自行搜索最小二乘法
+Refer to the straight line's equation to Eq 5.22 of Xiang Gao's SLAM-on-auto-driving book.
 '''
 def min_line_dist(rays_o, rays_d):
     # [N_images, 3, 3]
@@ -178,7 +185,7 @@ def min_line_dist(rays_o, rays_d):
 
 
 '''
-该方法用于“球面化”相机分布并返回一个环绕的相机轨迹用于新视角合成，如果是360度环绕场景则用这个方法
+该方法用于“球面化”相机分布并返回一个环绕的相机轨迹用于新视角合成. 如果是360度环绕场景则用这个方法.
 这个方法会改变原来的相机位姿，具体步骤就是将相机位姿从世界坐标系转换到以视角中心为原点的坐标系，然后缩放到到单位圆内，场景边界也进行对应缩放
 并且该方法会生成120个环绕场景中心的相机位姿用于测试
 '''
@@ -343,8 +350,11 @@ def load_real_data(basedir, factor=8, recenter=True, spherify=False, path_zflat=
 
     # print('已加载图片', imgs.shape, poses[:, -1, 0])
     # 将旋转矩阵第一列（X轴）和第二列（Y轴）互换，并且对第二列（Y轴）取反方向，目的是将LLFF的相机坐标系变成OpenGL/NeRF的相机坐标系
+    # (note) LLFF camera frame: x down, y right, z backward. Reference: https://github.com/Fyusion/LLFF.
+    # OpenGL: x right, y down, z backward. Reference: https://learnopengl.com/Getting-started/Coordinate-Systems.
     poses = np.concatenate([poses[:, 1:2, :], -poses[:, 0:1, :], poses[:, 2:, :]], 1)
     # [3, 5, N_images] --> [N_images, 3, 5]
+    # Dimension 2 was moved to dimension 0. The dimension was forced to move accordingly.
     poses = np.moveaxis(poses, -1, 0).astype(np.float32)
     # [H, W, 3, N_images] --> [N_images, H, W, 3]
     # 这就是最终返回的图片数据
@@ -353,9 +363,14 @@ def load_real_data(basedir, factor=8, recenter=True, spherify=False, path_zflat=
     bds = np.moveaxis(bds, -1, 0).astype(np.float32)
 
     # 这个缩放是针对face forward场景，为了配合NDC使用，因为NDC要求整个场景必须位于z=-near平面之后，
+    # NDC: Normalized Device Coordinate. Reference: https://yconquesty.github.io/blog/ml/nerf/nerf_ndc.html.
     # 这里是将场景到相机的最小距离被缩放为1（因为在NeRF中设定近平面为z=-1），再通过bd_factor确保距离大于1
     sc = 1. if bd_factor is None else 1. / (bds.min() * bd_factor)
     # 平移向量乘以缩放系数
+    # r11 r12 r12 t1 H
+    # r21 r22 r23 t2 W
+    # r31 r32 r33 t3 f
+    # [:, :3, 3] gets the 3rd column of the matrix.
     poses[:, :3, 3] *= sc
     # 边界范围乘以缩放系数
     # 这就是最终返回的边界数据
