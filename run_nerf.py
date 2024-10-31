@@ -37,7 +37,7 @@ warnings.filterwarnings("ignore")
 '''
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--datadir', type=str, default=r'E:\datasets\nerf\nerf_llff_data\horns', help='这个路径下需要有poses_bounds.npy以及images文件夹')
+    parser.add_argument('--datadir', type=str, required=True, help='这个路径下需要有poses_bounds.npy以及images文件夹')
     # 网络模型参数
     parser.add_argument('--netdepth', type=int, default=8, help='网络层数')
     parser.add_argument('--netwidth', type=int, default=256, help='网络层的通道数')
@@ -65,7 +65,7 @@ def parse_args():
     # 数据集参数
     parser.add_argument("--factor", type=int, default=16, help='数据处理时的下采样倍率')
     parser.add_argument("--no_ndc", type=bool, default=False, help='不使用归一化设备坐标系，环绕场景设为True，前向场景一般用ndc，但也可以不用，效果会差一些')
-    parser.add_argument("--lindisp", type=bool, default=False, help='是否基于视差图采样而不是深度')
+    parser.add_argument("--lindisp", type=bool, default=False, help='是否基于视差图采样而不是深度. 用于环绕场景.')
     parser.add_argument("--spherify", type=bool, default=False, help='用于360度场景')
     parser.add_argument("--llffhold", type=int, default=8, help='每隔N张图片选一张做测试集, 论文中用的8')
     # 训练记录和保存参数
@@ -85,6 +85,7 @@ def main(args):
 
     K = None
     # 加载数据集，bds只用于计算near和far，且前向场景没用到
+    # render_poses are the poses generated for testing.
     images, poses, bds, render_poses = load_real_data(args.datadir, args.factor, recenter=True,
                                                       spherify=args.spherify, path_zflat=True)
     hwf = poses[0, :3, -1]
@@ -128,7 +129,7 @@ def main(args):
     # 获取当前时间，创建本次训练的目录
     train_start_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     train_start_time = train_start_time.replace(' ', '_').replace('-', '_').replace(':', '_')
-    save_folder = os.path.join('train_result', train_start_time)
+    save_folder = os.path.join(f'{args.datadir}/train_result', train_start_time)
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
 
@@ -158,6 +159,7 @@ def main(args):
     input_ch_views = embed_fn_dirs.out_dim
 
     output_ch = 5 if args.N_importance > 0 else 4
+    # skip means the number of skipping layers for residual feeding.
     skips = [4]
     # 实例化模型
     model = NeRF_Model(D=args.netdepth, W=args.netwidth, input_ch=input_ch, input_ch_views=input_ch_views,
@@ -362,5 +364,3 @@ def main(args):
 if __name__ == '__main__':
     args = parse_args()
     main(args)
-
-

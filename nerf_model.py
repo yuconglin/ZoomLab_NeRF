@@ -44,7 +44,16 @@ class NeRF_Model(nn.Module):
         :param x:采样点或者采样点+视角方向，shape为[N_rays*N_samples, 63]或者[N_rays*N_samples, 90]
         :return:
         '''
-        # input_pts: [N_rays*N_samples, 63]
+        # Why we have 63 dim for the positions? 
+        # Each dimension for (x, y, z) will have 20 dimension for position encoding (10 for sin and 10 for cos).
+        # It became 60 + 3 = 63 after adding the position itself.
+
+        # Why we have 27 dim for the view angles?
+        # Each dimension for (dx, dy, dz) will have 8 dimemsion for position encoding (4 for sin and 4 for cos).
+        # It became 24 + 3 = 27 after adding the view angle itself.
+        # Note that the view angle was represented as (dx, dy, dz) instead of (theta, phi) as in the paper.
+
+        # input_pts: [N_rays*N_samples, 63], position encoding 10 for 
         # input_views: [N_rays*N_samples, 27]
         if self.use_viewdirs:
             input_pts, input_views = torch.split(x, [self.input_ch, self.input_ch_views], dim=-1)

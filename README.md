@@ -10,5 +10,5 @@ B站讲解视频：https://www.bilibili.com/video/BV1gG411k7KS/?spm_id_from=333.
 $ {in the project folder:}
 $ python3 -m venv ../zoomlab_nerf_venv
 $ . ../zoomlab_nerf_venv/bin/activate
-(zoomlab_nerf_venv) $ pip install torch opencv-python imageio numpy matplotlib scipy
+(zoomlab_nerf_venv) $ pip install torch opencv-python imageio numpy matplotlib scipy tqdm tensorboard imageio[pyav] imageio[ffmpeg]
 ```

@@ -114,8 +114,13 @@ def get_rays_np(H, W, K, c2w):
     :return:
     '''
     i, j = np.meshgrid(np.linspace(0, W-1, W, dtype=np.float32), np.linspace(0, H-1, H, dtype=np.float32))
+    # ( (ux - cx) / fx, (uy - cy) / fy, -1 ). Z is of unit value.  
     dirs = np.stack([(i-K[0][2])/K[0][0], -(j-K[1][2])/K[1][1], -np.ones_like(i)], -1)
+    # np.newaxis is used to add a dimension to dirs,
+    # so that it can be broadcasted to multiply with c2w.
+    # Camera frame to the world frame.
     rays_d = np.sum(dirs[..., np.newaxis, :] * c2w[:3, :3], -1)
+    # broadcast the translation part of c2w to the same shape as "rays_d".
     rays_o = np.broadcast_to(c2w[:3, -1], np.shape(rays_d))
     return rays_o, rays_d
 
